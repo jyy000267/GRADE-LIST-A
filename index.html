@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>學生成績查詢</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans TC', '微軟正黑體', sans-serif;
+    background: #f0f4f8;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+  }
+  h1 { font-size: 1.5rem; color: #1a3c5e; margin-bottom: 6px; text-align: center; }
+  .subtitle { font-size: 0.9rem; color: #666; margin-bottom: 24px; text-align: center; }
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    margin-bottom: 24px;
+  }
+  label { display: block; font-size: 0.9rem; color: #444; margin-bottom: 6px; font-weight: 600; }
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid #d0dce8;
+    border-radius: 10px;
+    font-size: 1rem;
+    color: #222;
+    margin-bottom: 16px;
+    transition: border 0.2s;
+    font-family: inherit;
+  }
+  input:focus { outline: none; border-color: #2f80ed; }
+  button {
+    width: 100%;
+    padding: 13px;
+    background: #2f80ed;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-family: inherit;
+  }
+  button:hover { background: #1a6cd4; }
+  button:disabled { background: #a0bfe0; cursor: not-allowed; }
+  .msg {
+    text-align: center;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    margin-bottom: 14px;
+  }
+  .msg.error { background: #fdecea; color: #c0392b; }
+  .msg.loading { background: #eef2f6; color: #555; }
+
+  .result-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    display: none;
+  }
+  .result-card.show { display: block; }
+  .student-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1.5px solid #eef2f6;
+  }
+  .avatar {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: #2f80ed;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; font-weight: 700; flex-shrink: 0;
+  }
+  .student-name { font-size: 1.1rem; font-weight: 700; color: #1a3c5e; }
+  .student-meta { font-size: 0.85rem; color: #888; margin-top: 2px; }
+  .grades-title { font-size: 0.85rem; color: #888; font-weight: 600; margin-bottom: 12px; }
+  .grade-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    background: #f7fafd;
+  }
+  .grade-subject { font-size: 0.95rem; color: #333; font-weight: 500; }
+  .grade-score {
+    font-size: 1rem; font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: #e8f1fd; color: #2f80ed;
+  }
+  .grade-score.high { background: #e6f9f0; color: #27ae60; }
+  .grade-score.low  { background: #fdecea; color: #e74c3c; }
+  footer { margin-top: 32px; font-size: 0.78rem; color: #bbb; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>📋 學生成績查詢</h1>
+<p class="subtitle">請輸入班級與學號以查詢成績</p>
+
+<div class="card">
+  <label for="inputClass">班級</label>
+  <input type="text" id="inputClass" placeholder="請輸入班級（例如：301）" autocomplete="off">
+  <label for="inputId">學號</label>
+  <input type="text" id="inputId" placeholder="請輸入學號" autocomplete="off">
+  <div id="msg" class="msg" style="display:none"></div>
+  <button id="btn" onclick="lookup()">查詢成績</button>
+</div>
+
+<div class="result-card" id="resultCard">
+  <div class="student-info">
+    <div class="avatar" id="avatarText">？</div>
+    <div>
+      <div class="student-name" id="resId"></div>
+      <div class="student-meta" id="resMeta"></div>
+    </div>
+  </div>
+  <div class="grades-title">科目成績</div>
+  <div id="gradeList"></div>
+</div>
+
+<footer>資料來源：Google 試算表｜如有疑問請聯繫授課教師</footer>
+
+<script>
+  // ▼ 請將下方網址替換為您的 Apps Script 部署網址
+  const API_URL = '請貼上您的Apps Script部署網址';
+
+  function showMsg(text, type='error') {
+    const el = document.getElementById('msg');
+    el.textContent = text;
+    el.className = 'msg ' + type;
+    el.style.display = 'block';
+  }
+  function hideMsg() { document.getElementById('msg').style.display = 'none'; }
+
+  function scoreColor(val) {
+    const n = parseFloat(val);
+    if (isNaN(n)) return '';
+    if (n >= 80) return 'high';
+    if (n < 60) return 'low';
+    return '';
+  }
+
+  async function lookup() {
+    const classVal = document.getElementById('inputClass').value.trim();
+    const idVal = document.getElementById('inputId').value.trim();
+    const btn = document.getElementById('btn');
+    const resultCard = document.getElementById('resultCard');
+
+    if (!classVal || !idVal) {
+      showMsg('請輸入班級與學號');
+      resultCard.classList.remove('show');
+      return;
+    }
+
+    hideMsg();
+    btn.disabled = true;
+    btn.textContent = '查詢中…';
+    resultCard.classList.remove('show');
+
+    try {
+      if (API_URL === '請貼上您的Apps Script部署網址') {
+        throw new Error('尚未設定 API 網址，請先完成 Apps Script 部署');
+      }
+
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error('無法連線至資料來源');
+      const json = await res.json();
+      const rows = json.data;
+
+      if (!rows || rows.length === 0) throw new Error('試算表無資料');
+
+      // headers are keys of first row object
+      const headers = Object.keys(rows[0]);
+      // col A = headers[0] (班級), col B = headers[1] (學號), col C+ = grades
+
+      const match = rows.find(row => {
+        const rowClass = String(row[headers[0]] || '').trim();
+        const rowId    = String(row[headers[1]] || '').trim();
+        return rowClass === classVal && rowId === idVal;
+      });
+
+      if (!match) {
+        showMsg('找不到符合的資料，請確認班級與學號是否正確');
+      } else {
+        document.getElementById('resId').textContent = '學號：' + match[headers[1]];
+        document.getElementById('resMeta').textContent = '班級：' + match[headers[0]];
+        document.getElementById('avatarText').textContent = match[headers[1]].toString().slice(-2);
+
+        const gradeList = document.getElementById('gradeList');
+        gradeList.innerHTML = '';
+        let hasGrades = false;
+
+        for (let i = 2; i < headers.length; i++) {
+          const subject = headers[i];
+          const score = match[subject] !== undefined ? String(match[subject]) : '';
+          if (!subject && score === '') continue;
+          hasGrades = true;
+          const row = document.createElement('div');
+          row.className = 'grade-row';
+          row.innerHTML = `
+            <span class="grade-subject">${subject}</span>
+            <span class="grade-score ${scoreColor(score)}">${score !== '' ? score : '—'}</span>
+          `;
+          gradeList.appendChild(row);
+        }
+
+        if (!hasGrades) {
+          gradeList.innerHTML = '<div style="text-align:center;color:#888;padding:12px">目前尚無成績資料</div>';
+        }
+
+        resultCard.classList.add('show');
+      }
+    } catch (e) {
+      showMsg('讀取資料時發生錯誤：' + e.message);
+    }
+
+    btn.disabled = false;
+    btn.textContent = '查詢成績';
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') lookup(); });
+</script>
+</body>
+</html>
