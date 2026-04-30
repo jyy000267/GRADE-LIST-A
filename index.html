@@ -125,21 +125,22 @@
 <body>
 <div class="header">
   <h1>學生成績查詢</h1>
-  <p>請輸入您的學號與姓名以查詢成績</p>
+  <p>請輸入您的班級與學號以查詢成績</p>
 </div>
 
 <div class="card">
+ <label for="sname">班級</label>
+  <input type="text" id="sname" placeholder="請輸入班級(A或B)" autocomplete="off">
   <label for="sid">學號</label>
   <input type="text" id="sid" placeholder="請輸入學號" autocomplete="off">
-  <label for="sname">姓名</label>
-  <input type="text" id="sname" placeholder="請輸入姓名" autocomplete="off">
+  
   <button onclick="lookup()">查詢成績</button>
   <div id="msg"></div>
   <div id="result"></div>
 </div>
 
 <script>
-const SHEET_ID = '16OFlbjlpOT08lDlS2j-k0BnxxdL4FspwfX0tFBElcqk';
+const SHEET_ID = '1LgtrNxI6zjXP48FAFG1UwTVUk42iwsX-X7SLHqXnELk';
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
 
 function parseCSV(text) {
@@ -168,7 +169,7 @@ async function lookup() {
 
   resultEl.innerHTML = '';
   if (!sid || !sname) {
-    msgEl.innerHTML = '<div class="msg error">請輸入學號與姓名</div>';
+    msgEl.innerHTML = '<div class="msg error">請輸入班級與學號</div>';
     return;
   }
 
